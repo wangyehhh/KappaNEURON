@@ -39,17 +39,19 @@ class TestCaAccumulation(unittest.TestCase):
     ## Compile and load mechanisms - note that the version of
     ## nrnivmodl must match NEURON dll - there is no way of checking
     ## this at present
-    dirpath = tempfile.mkdtemp()
-    for file in glob.glob(os.path.join(pkgutil.get_loader("KappaNEURON").filename, 'tests', '*.mod')):
-        shutil.copy(file, dirpath)
+    print(os.getcwd())
+    if platform.system() != 'Windows':
+        dirpath = tempfile.mkdtemp()
+        for file in glob.glob(os.path.join(pkgutil.get_loader("KappaNEURON").filename, 'tests', '*.mod')):
+            shutil.copy(file, dirpath)
     
-    compile_modfiles(dirpath)
-    ## neuron.load_mechanisms(dirpath)
-    neuron.load_mechanisms(dirpath)
-    ## We can't delete the mechanisms
-    ## shutil.rmtree(dirpath)
+        compile_modfiles(dirpath)
+        ## neuron.load_mechanisms(dirpath)
+        neuron.load_mechanisms(dirpath)
+        ## We can't delete the mechanisms
+        ## shutil.rmtree(dirpath)
     
-    ## Whether to plot
+        ## Whether to plot
     plot = True
 
     ## We can't put this stuff in setUp(), since problems arise if we
@@ -99,10 +101,10 @@ class TestCaAccumulation(unittest.TestCase):
         ## This runs at the start of every test...
         self.caitonum = molecules_per_mM_um3*np.pi*(self.sk.diam**2)/4*self.sk.L
         h.dt = 0.025/4
-        print ""
-        print "======================================================================"        
-        print "In method", self._testMethodName
-        print "----------------------------------------------------------------------"        
+        print ("")
+        print ("======================================================================")
+        print ("In method", self._testMethodName)
+        print ("----------------------------------------------------------------------")
 
     def get_mode(self, sec):
         ## Determine if section contains mod pump or kappa pump
@@ -151,7 +153,7 @@ class TestCaAccumulation(unittest.TestCase):
             self.rec_Pi = []
             for sec in h.allsec():
                 self.rec_Pi.append(h.Vector())
-                print self.get_mode(sec)
+                print (self.get_mode(sec))
                 if self.get_mode(sec) == 'mod':
                     self.rec_Pi[-1].record(sec(0.5)._ref_P_caPump2)
                 else:
@@ -272,7 +274,7 @@ class TestCaAccumulation(unittest.TestCase):
         if verbose:
             print("cca=%f, t0=%f, t1=%f, gbar=%f, cm=%f, v0=%f, v1=%f" % (sec(0.5).eca, self.t0, self.t1, self.gbar, self.cm, self.v0, v1))
         if verbose:
-            print 'Theoretical voltage and Ca difference:'
+            print('Theoretical voltage and Ca difference:')
         tau = self.cm/(1000.0*self.gbar + self.k1*self.cm)
         vinf = (1000.0*self.gbar*eca + self.cm*self.k1*self.v0)/(1000.0*self.gbar + self.cm*self.k1)
         Deltav_theo = (vinf - self.v0)*(1-np.exp(-(t - self.t0)/tau))
@@ -282,12 +284,12 @@ class TestCaAccumulation(unittest.TestCase):
         Deltaca_theo = Deltav_theo*vtocai
         Deltaca_theo1 = Deltav_theo1*vtocai
         if verbose:
-            print "eca= %f; tau=%f; vinf=%f; Deltav_theo=%f; Deltaca_theo=%f" % (eca, tau, vinf, Deltav_theo, Deltaca_theo)
+            print("eca= %f; tau=%f; vinf=%f; Deltav_theo=%f; Deltaca_theo=%f" % (eca, tau, vinf, Deltav_theo, Deltaca_theo))
         if output:
-            print 'Theoretical voltage and Ca changes between start and end of injection:'
-            print "  v(t1) -   v(t0) = %10.6f - %10.6f = %10.6f" % (self.v0 +   Deltav_theo1,  self.v0,   Deltav_theo1)
-            print "cai(t1) - cai(t0) = %10.6f - %10.6f = %10.6f" % (self.cai0 + Deltaca_theo1, self.cai0, Deltaca_theo1)
-            print
+            print('Theoretical voltage and Ca changes between start and end of injection:')
+            print("  v(t1) -   v(t0) = %10.6f - %10.6f = %10.6f" % (self.v0 +   Deltav_theo1,  self.v0,   Deltav_theo1))
+            print("cai(t1) - cai(t0) = %10.6f - %10.6f = %10.6f" % (self.cai0 + Deltaca_theo1, self.cai0, Deltaca_theo1))
+            print()
         
         return(Deltav_theo, Deltaca_theo)
 
@@ -295,10 +297,10 @@ class TestCaAccumulation(unittest.TestCase):
         v1 = sec(0.5).v
         Deltav = v1 - self.v0
         Deltaca = sec(0.5).cai - self.rec_cai[i][0]
-        print 'Simulated voltage and Ca changes between start and end of injection:'
-        print "  v(t1) -   v(t0) = %10.6f - %10.6f = %10.6f" % (v1, self.v0, Deltav)
-        print "cai(t1) - cai(t0) = %10.6f - %10.6f = %10.6f" % (sec(0.5).cai, self.rec_cai[i][0], Deltaca)
-        print
+        print('Simulated voltage and Ca changes between start and end of injection:')
+        print("  v(t1) -   v(t0) = %10.6f - %10.6f = %10.6f" % (v1, self.v0, Deltav))
+        print("cai(t1) - cai(t0) = %10.6f - %10.6f = %10.6f" % (sec(0.5).cai, self.rec_cai[i][0], Deltaca))
+        print()
         
         return(Deltav, Deltaca)
 
@@ -316,9 +318,9 @@ class TestCaAccumulation(unittest.TestCase):
         for sec in h.allsec():
             ## Determine if section contains mod pump or kappa pump
             mode = self.get_mode(sec)
-            print "----------------------------------------------------------------------"
-            print "Section " + sec.name() + " contains " +  mode + " pump"
-            print "----------------------------------------------------------------------"
+            print("----------------------------------------------------------------------")
+            print("Section " + sec.name() + " contains " +  mode + " pump")
+            print("----------------------------------------------------------------------")
             ## Print some variables
             v1 = sec(0.5).v
             print("t0=%f, t1=%f, gbar=%f, cm=%f" % (self.t0, self.t1, self.gbar, self.cm))
@@ -331,7 +333,7 @@ class TestCaAccumulation(unittest.TestCase):
             vtocai[mode] = self.cm/(1E-1*2*h.FARADAY*volbyarea[mode])
 
             (diffv[mode], diffca[mode]) = self.get_diffv_diffca(i)
-            print "----------------------------------------------------------------------"
+            print("----------------------------------------------------------------------")
             i = i+1
 
         return(Deltav, Deltaca, Deltav_theo, Deltaca_theo, volbyarea, vtocai, diffv, diffca)
@@ -586,7 +588,7 @@ class TestCaAccumulation(unittest.TestCase):
         i = 0
         for sec in h.allsec():
             mode = self.get_mode(sec)
-            print mode
+            print(mode)
             v = np.array(self.rec_v[i])
             self.assertAlmostEqual(v[np.where(np.isclose(times, self.t1 + 0.1))],
                                    v[np.where(np.isclose(times, self.tstop))])
@@ -608,7 +610,7 @@ class TestCaAccumulation(unittest.TestCase):
         i = 0
         for sec in h.allsec():
             mode = self.get_mode(sec)
-            print mode
+            print(mode)
             v = np.array(self.rec_v[i])
             self.assertGreater(v[np.where(np.isclose(times, self.t1 + 0.1))],
                                    v[np.where(np.isclose(times, self.tstop))])
@@ -625,8 +627,8 @@ class TestCaAccumulation(unittest.TestCase):
         self.mechanism = None
 
 
-# testSuite = unittest.TestSuite()
-# testSuite.addTest(TestCaAccumulation('test_injectCalcium'))
+testSuite = unittest.TestSuite()
+testSuite.addTest(TestCaAccumulation('test_injectCalcium'))
 # testSuite.addTest(TestCaAccumulation('test_injectCalciumGHK'))
 # testSuite.addTest(TestCaAccumulation('test_injectCalciumPump'))
 # testSuite.addTest(TestCaAccumulation('test_injectCalciumPumpGHK'))
@@ -635,11 +637,11 @@ class TestCaAccumulation(unittest.TestCase):
 # testSuite.addTest(TestCaAccumulation('test_twoMembraneSpecies'))
 # testSuite.addTest(TestCaAccumulation('test_twoMembraneSpeciesOneUncharged'))
 
-# unittest.TextTestRunner(verbosity=2).run(testSuite)
+unittest.TextTestRunner(verbosity=2).run(testSuite)
 
 # def quick():
 #     print ("hello")
 #     unittest.TextTestRunner(verbosity=2).run(testSuite)
 
-if __name__ == '__main__':
-    unittest.main()    
+# if __name__ == '__main__':
+#     unittest.main()
