@@ -19,6 +19,7 @@ from py4j.protocol import *
 
 from scipy.stats import poisson
 import numpy
+import scipy.sparse
 import re
 import os, sys
 import warnings
@@ -201,9 +202,11 @@ def _kn_fixed_step_solve(raw_dt):
     else:
         # the actual advance via implicit euler
         n = len(states)
-        m = _scipy_sparse_eye(n, n) - dt * _euler_matrix
+        # m = _scipy_sparse_eye(n, n) - dt * _euler_matrix
+        m = scipy.sparse.eye(n, n) - dt * nrr._euler_matrix
         # removed diagonal preconditioner since tests showed no improvement in convergence
-        result, info = _scipy_sparse_linalg_bicgstab(m, dt * b)
+        # result, info = _scipy_sparse_linalg_bicgstab(m, dt * b)
+        result, info = scipy.sparse.linalg.bicgstab(m, dt * b)
         assert(info == 0)
         states[:] += result
 
@@ -218,7 +221,7 @@ def _kn_fixed_step_solve(raw_dt):
     sys.stdout.flush()
 
 
-nrr._callbacks[4] = _kn_fixed_step_solve
+# nrr._callbacks[4] = _kn_fixed_step_solve
 _fih3 = neuron.h.FInitializeHandler(2, _kn_init)
 
 ## FIXME: The next two lines are needed as a workaround, because of
@@ -448,7 +451,8 @@ class Kappa(GeneralizedReaction):
             active_regions = []
         for r in active_regions:
             for sec in r._secs:
-                for i in xrange(sec.nseg):
+                # for i in xrange(sec.nseg):
+                for i in range(sec.nseg):
                     name = '_ref_v'
                     seg = sec((i + 0.5) / sec.nseg)
                     self._v_ptrs.append(seg.__getattribute__(name))
@@ -694,12 +698,14 @@ class KappaFlux(MultiCompartmentReaction):
     def _do_memb_scales(self, cur_map): 
         """Set up self._memb_scales and cur_map."""
         if not self._scale_by_area:
-            areas = numpy.ones(len(areas))
+            # areas = numpy.ones(len(areas))
+            print("ERROR!")
         else:
             volumes = numpy.concatenate([list(self._regions[0]._geometry.volumes1d(sec) for sec in self._regions[0].secs)])
         neuron_areas = []
         for sec in self._regions[0].secs:
-            neuron_areas += [h.area((i + 0.5) / sec.nseg, sec=sec) for i in xrange(sec.nseg)]
+            # neuron_areas += [h.area((i + 0.5) / sec.nseg, sec=sec) for i in xrange(sec.nseg)]
+            neuron_areas += [h.area((i + 0.5) / sec.nseg, sec=sec) for i in range(sec.nseg)]
         neuron_areas = numpy.array(neuron_areas)
         # area_ratios is usually a vector of 1s
         area_ratios = volumes / neuron_areas
@@ -731,7 +737,8 @@ class KappaFlux(MultiCompartmentReaction):
             elif 'o' in dest_regions and 'i' not in dest_regions and 'o' not in source_regions:
                 inside = -1 # 'source'
             else:
-                raise RxDException('unable to identify which side of reaction is inside (hope to remove the need for this')
+                # raise RxDException('unable to identify which side of reaction is inside (hope to remove the need for this')
+                raise Exception('unable to identify which side of reaction is inside (hope to remove the need for this')
         
         # dereference the species to get the true species if it's actually a SpeciesOnRegion
         sources = [s()._species() for s in self._sources]
@@ -739,7 +746,8 @@ class KappaFlux(MultiCompartmentReaction):
         if self._membrane_flux:
             if any(s in dests for s in sources) or any(d in sources for d in dests):
                 # TODO: remove this limitation
-                raise RxDException('current fluxes do not yet support same species on both sides of reaction')
+                # raise RxDException('current fluxes do not yet support same species on both sides of reaction')
+                raise Exception('current fluxes do not yet support same species on both sides of reaction')
         
         # TODO: make so don't need multiplicity (just do in one pass)
         # TODO: this needs changed when I switch to allowing multiple sides on the left/right (e.g. simplified Na/K exchanger)
@@ -750,7 +758,8 @@ class KappaFlux(MultiCompartmentReaction):
         self._cur_mapped = []
         
         for sec in self._regions[0].secs:
-            for i in xrange(sec.nseg):
+            # for i in xrange(sec.nseg):
+            for i in range(sec.nseg):
                 local_ptrs = []
                 local_mapped = []
                 for sp in itertools.chain(self._sources, self._dests):

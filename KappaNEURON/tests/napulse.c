@@ -1,5 +1,6 @@
-/* Created by Language version: 6.2.0 */
+/* Created by Language version: 7.7.0 */
 /* VECTORIZED */
+#define NRN_VECTORIZED 1
 #include <stdio.h>
 #include <stdlib.h>
 #include <math.h>
@@ -21,10 +22,17 @@ extern int _method3;
 extern double hoc_Exp(double);
 #endif
  
-#define _threadargscomma_ _p, _ppvar, _thread, _nt,
-#define _threadargs_ _p, _ppvar, _thread, _nt
+#define nrn_init _nrn_init__NaPulse
+#define _nrn_initial _nrn_initial__NaPulse
+#define nrn_cur _nrn_cur__NaPulse
+#define _nrn_current _nrn_current__NaPulse
+#define nrn_jacob _nrn_jacob__NaPulse
+#define nrn_state _nrn_state__NaPulse
+#define _net_receive _net_receive__NaPulse 
  
+#define _threadargscomma_ _p, _ppvar, _thread, _nt,
 #define _threadargsprotocomma_ double* _p, Datum* _ppvar, Datum* _thread, _NrnThread* _nt,
+#define _threadargs_ _p, _ppvar, _thread, _nt
 #define _threadargsproto_ double* _p, Datum* _ppvar, Datum* _thread, _NrnThread* _nt
  	/*SUPPRESS 761*/
 	/*SUPPRESS 762*/
@@ -69,6 +77,15 @@ extern void hoc_register_limits(int, HocParmLimits*);
 extern void hoc_register_units(int, HocParmUnits*);
 extern void nrn_promote(Prop*, int, int);
 extern Memb_func* memb_func;
+ 
+#define NMODL_TEXT 1
+#if NMODL_TEXT
+static const char* nmodl_file_text;
+static const char* nmodl_filename;
+extern void hoc_reg_nmodl_text(int, const char*);
+extern void hoc_reg_nmodl_filename(int, const char*);
+#endif
+
  extern Prop* nrn_point_prop_;
  static int _pointtype;
  static void* _hoc_create_pnt(_ho) Object* _ho; { void* create_point_process();
@@ -135,7 +152,7 @@ static void  nrn_jacob(_NrnThread*, _Memb_list*, int);
 }
  /* connect range variables in _p that hoc is supposed to know about */
  static const char *_mechanism[] = {
- "6.2.0",
+ "7.7.0",
 "NaPulse",
  "t0",
  "t1",
@@ -176,7 +193,7 @@ static void nrn_alloc(Prop* _prop) {
  static void _initlists();
  static void _update_ion_pointer(Datum*);
  extern Symbol* hoc_lookup(const char*);
-extern void _nrn_thread_reg(int, int, void(*f)(Datum*));
+extern void _nrn_thread_reg(int, int, void(*)(Datum*));
 extern void _nrn_thread_table_reg(int, void(*)(double*, Datum*, Datum*, _NrnThread*, int));
 extern void hoc_register_tolerance(int, HocStateTolerance*, Symbol***);
 extern void _cvode_abstol( Symbol**, double*, int);
@@ -193,9 +210,17 @@ extern void _cvode_abstol( Symbol**, double*, int);
  _mechtype = nrn_get_mechtype(_mechanism[1]);
      _nrn_setdata_reg(_mechtype, _setdata);
      _nrn_thread_reg(_mechtype, 2, _update_ion_pointer);
+ #if NMODL_TEXT
+  hoc_reg_nmodl_text(_mechtype, nmodl_file_text);
+  hoc_reg_nmodl_filename(_mechtype, nmodl_filename);
+#endif
   hoc_register_prop_size(_mechtype, 5, 4);
+  hoc_register_dparam_semantics(_mechtype, 0, "area");
+  hoc_register_dparam_semantics(_mechtype, 1, "pntproc");
+  hoc_register_dparam_semantics(_mechtype, 2, "na_ion");
+  hoc_register_dparam_semantics(_mechtype, 3, "na_ion");
  	hoc_register_var(hoc_scdoub, hoc_vdoub, hoc_intfunc);
- 	ivoc_help("help ?1 NaPulse C:/study/FinalProject/KappaNEURON/KappaNEURON/tests/napulse.mod\n");
+ 	ivoc_help("help ?1 NaPulse C:/study/FinalProject/KappaNEURON/KappaNEURON/test/napulse.mod\n");
  hoc_register_limits(_mechtype, _hoc_parm_limits);
  hoc_register_units(_mechtype, _hoc_parm_units);
  }
@@ -242,7 +267,8 @@ for (_iml = 0; _iml < _cntml; ++_iml) {
   }
  v = _v;
  initmodel(_p, _ppvar, _thread, _nt);
- }}
+ }
+}
 
 static double _nrn_current(double* _p, Datum* _ppvar, Datum* _thread, _NrnThread* _nt, double _v){double _current=0.;v=_v;{ {
    if ( ( t >= t0 )  && ( t <= t1 ) ) {
@@ -295,7 +321,9 @@ for (_iml = 0; _iml < _cntml; ++_iml) {
 	NODERHS(_nd) -= _rhs;
   }
  
-}}
+}
+ 
+}
 
 static void nrn_jacob(_NrnThread* _nt, _Memb_list* _ml, int _type) {
 double* _p; Datum* _ppvar; Datum* _thread;
@@ -317,7 +345,9 @@ for (_iml = 0; _iml < _cntml; ++_iml) {
 	NODED(_nd) += _g;
   }
  
-}}
+}
+ 
+}
 
 static void nrn_state(_NrnThread* _nt, _Memb_list* _ml, int _type) {
 
@@ -334,4 +364,46 @@ _first = 0;
 
 #if defined(__cplusplus)
 } /* extern "C" */
+#endif
+
+#if NMODL_TEXT
+static const char* nmodl_filename = "napulse.mod";
+static const char* nmodl_file_text = 
+  "TITLE Sodium injection pulse\n"
+  ": Sets Glu current to inabar between t0 and t1; conductance is 0 otherwise\n"
+  "\n"
+  "NEURON {\n"
+  "	  POINT_PROCESS NaPulse\n"
+  "    USEION na WRITE ina\n"
+  "    RANGE t0, t1, ina\n"
+  "}\n"
+  "\n"
+  "UNITS {\n"
+  "    (nA) = (nanoamp)\n"
+  "}\n"
+  "\n"
+  "PARAMETER {		:parameters that can be entered when function is called in cell-setup \n"
+  "	  celsius = 34	    (degC)\n"
+  "    t0 = 1            (ms)           : Start time of pulse\n"
+  "    t1 = 2            (ms)           : End time of pulse\n"
+  "    inabar = -0.0001 (nA)           : Amplitude of natamate pulse\n"
+  "    : inabar = -0.0000 (nA)           : Amplitude of natamate pulse\n"
+  "}\n"
+  "\n"
+  "ASSIGNED {                       : parameters needed to solve DE\n"
+  "	  ina   (nA)\n"
+  "}\n"
+  "\n"
+  "INITIAL {                        : initialize the following parameter using rates()\n"
+  "	  ina = 0\n"
+  "}\n"
+  "\n"
+  "BREAKPOINT {\n"
+  "    if ((t >= t0) && (t <= t1)) {\n"
+  "        ina = inabar\n"
+  "    } else {\n"
+  "        ina = 0\n"
+  "    }\n"
+  "}\n"
+  ;
 #endif

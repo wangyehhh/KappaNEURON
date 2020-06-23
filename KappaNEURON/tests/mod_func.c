@@ -9,7 +9,7 @@ extern void _capulse_reg();
 extern void _glupulse_reg();
 extern void _napulse_reg();
 
-modl_reg(){
+void modl_reg(){
 	//nrn_mswindll_stdio(stdin, stdout, stderr);
     if (!nrn_nobanner_) if (nrnmpi_myid < 1) {
 	fprintf(stderr, "Additional mechanisms from files\n");

@@ -1,5 +1,6 @@
-/* Created by Language version: 6.2.0 */
+/* Created by Language version: 7.7.0 */
 /* VECTORIZED */
+#define NRN_VECTORIZED 1
 #include <stdio.h>
 #include <stdlib.h>
 #include <math.h>
@@ -21,10 +22,18 @@ extern int _method3;
 extern double hoc_Exp(double);
 #endif
  
-#define _threadargscomma_ _p, _ppvar, _thread, _nt,
-#define _threadargs_ _p, _ppvar, _thread, _nt
+#define nrn_init _nrn_init__caPump1
+#define _nrn_initial _nrn_initial__caPump1
+#define nrn_cur _nrn_cur__caPump1
+#define _nrn_current _nrn_current__caPump1
+#define nrn_jacob _nrn_jacob__caPump1
+#define nrn_state _nrn_state__caPump1
+#define _net_receive _net_receive__caPump1 
+#define integrate integrate__caPump1 
  
+#define _threadargscomma_ _p, _ppvar, _thread, _nt,
 #define _threadargsprotocomma_ double* _p, Datum* _ppvar, Datum* _thread, _NrnThread* _nt,
+#define _threadargs_ _p, _ppvar, _thread, _nt
 #define _threadargsproto_ double* _p, Datum* _ppvar, Datum* _thread, _NrnThread* _nt
  	/*SUPPRESS 761*/
 	/*SUPPRESS 762*/
@@ -73,6 +82,15 @@ extern void hoc_register_limits(int, HocParmLimits*);
 extern void hoc_register_units(int, HocParmUnits*);
 extern void nrn_promote(Prop*, int, int);
 extern Memb_func* memb_func;
+ 
+#define NMODL_TEXT 1
+#if NMODL_TEXT
+static const char* nmodl_file_text;
+static const char* nmodl_filename;
+extern void hoc_reg_nmodl_text(int, const char*);
+extern void hoc_reg_nmodl_filename(int, const char*);
+#endif
+
  extern void _nrn_setdata_reg(int, void(*)(Prop*));
  static void _setdata(Prop* _prop) {
  _extcall_prop = _prop;
@@ -119,9 +137,10 @@ static void _ode_spec(_NrnThread*, _Memb_list*, int);
 static void _ode_matsol(_NrnThread*, _Memb_list*, int);
  
 #define _cvode_ieq _ppvar[5]._i
+ static void _ode_matsol_instance1(_threadargsproto_);
  /* connect range variables in _p that hoc is supposed to know about */
  static const char *_mechanism[] = {
- "6.2.0",
+ "7.7.0",
 "caPump1",
  "cai0_caPump1",
  "k1_caPump1",
@@ -167,7 +186,7 @@ static void nrn_alloc(Prop* _prop) {
  static void _thread_cleanup(Datum*);
  static void _update_ion_pointer(Datum*);
  extern Symbol* hoc_lookup(const char*);
-extern void _nrn_thread_reg(int, int, void(*f)(Datum*));
+extern void _nrn_thread_reg(int, int, void(*)(Datum*));
 extern void _nrn_thread_table_reg(int, void(*)(double*, Datum*, Datum*, _NrnThread*, int));
 extern void hoc_register_tolerance(int, HocStateTolerance*, Symbol***);
 extern void _cvode_abstol( Symbol**, double*, int);
@@ -186,12 +205,22 @@ extern void _cvode_abstol( Symbol**, double*, int);
      _nrn_thread_reg(_mechtype, 1, _thread_mem_init);
      _nrn_thread_reg(_mechtype, 0, _thread_cleanup);
      _nrn_thread_reg(_mechtype, 2, _update_ion_pointer);
+ #if NMODL_TEXT
+  hoc_reg_nmodl_text(_mechtype, nmodl_file_text);
+  hoc_reg_nmodl_filename(_mechtype, nmodl_filename);
+#endif
   hoc_register_prop_size(_mechtype, 8, 6);
+  hoc_register_dparam_semantics(_mechtype, 0, "ca_ion");
+  hoc_register_dparam_semantics(_mechtype, 1, "ca_ion");
+  hoc_register_dparam_semantics(_mechtype, 2, "ca_ion");
+  hoc_register_dparam_semantics(_mechtype, 3, "#ca_ion");
+  hoc_register_dparam_semantics(_mechtype, 5, "cvodeieq");
+  hoc_register_dparam_semantics(_mechtype, 4, "diam");
  	nrn_writes_conc(_mechtype, 0);
  	hoc_register_cvode(_mechtype, _ode_count, _ode_map, _ode_spec, _ode_matsol);
  	hoc_register_tolerance(_mechtype, _hoc_state_tol, &_atollist);
  	hoc_register_var(hoc_scdoub, hoc_vdoub, hoc_intfunc);
- 	ivoc_help("help ?1 caPump1 C:/study/FinalProject/KappaNEURON/KappaNEURON/tests/caPump1.mod\n");
+ 	ivoc_help("help ?1 caPump1 C:/study/FinalProject/KappaNEURON/KappaNEURON/test/caPump1.mod\n");
  hoc_register_limits(_mechtype, _hoc_parm_limits);
  hoc_register_units(_mechtype, _hoc_parm_units);
  }
@@ -224,7 +253,7 @@ static int _ode_spec1(_threadargsproto_);
 }
  static int _ode_matsol1 (double* _p, Datum* _ppvar, Datum* _thread, _NrnThread* _nt) {
  Dcai = Dcai  / (1. - dt*( 0.0 )) ;
- return 0;
+  return 0;
 }
  /*END CVODE*/
  
@@ -276,6 +305,10 @@ static void _ode_map(int _ieq, double** _pv, double** _pvdot, double* _pp, Datum
  	_pv[0] = &(_ion_cai);
  }
  
+static void _ode_matsol_instance1(_threadargsproto_) {
+ _ode_matsol1 (_p, _ppvar, _thread, _nt);
+ }
+ 
 static void _ode_matsol(_NrnThread* _nt, _Memb_list* _ml, int _type) {
    double* _p; Datum* _ppvar; Datum* _thread;
    Node* _nd; double _v; int _iml, _cntml;
@@ -288,7 +321,7 @@ static void _ode_matsol(_NrnThread* _nt, _Memb_list* _ml, int _type) {
   cai = _ion_cai;
   ica = _ion_ica;
   cai = _ion_cai;
- _ode_matsol1 (_p, _ppvar, _thread, _nt);
+ _ode_matsol_instance1(_threadargs_);
  }}
  
 static void _thread_mem_init(Datum* _thread) {
@@ -342,7 +375,8 @@ for (_iml = 0; _iml < _cntml; ++_iml) {
  initmodel(_p, _ppvar, _thread, _nt);
   _ion_cai = cai;
    nrn_wrote_conc(_ca_sym, (&(_ion_cai)) - 1, _style_ca);
-}}
+}
+}
 
 static double _nrn_current(double* _p, Datum* _ppvar, Datum* _thread, _NrnThread* _nt, double _v){double _current=0.;v=_v;{ {
    ica = k1 * cai / 2.0 * diam * F / ( 1e4 ) ;
@@ -393,7 +427,9 @@ if (_nt->_vcv) { _ode_spec1(_p, _ppvar, _thread, _nt); }
 	NODERHS(_nd) -= _rhs;
   }
  
-}}
+}
+ 
+}
 
 static void nrn_jacob(_NrnThread* _nt, _Memb_list* _ml, int _type) {
 double* _p; Datum* _ppvar; Datum* _thread;
@@ -415,12 +451,15 @@ for (_iml = 0; _iml < _cntml; ++_iml) {
 	NODED(_nd) += _g;
   }
  
-}}
+}
+ 
+}
 
 static void nrn_state(_NrnThread* _nt, _Memb_list* _ml, int _type) {
- double _break, _save;
 double* _p; Datum* _ppvar; Datum* _thread;
-Node *_nd; double _v; int* _ni; int _iml, _cntml;
+Node *_nd; double _v = 0.0; int* _ni; int _iml, _cntml;
+double _dtsav = dt;
+if (secondorder) { dt *= 0.5; }
 #if CACHEVEC
     _ni = _ml->_nodeindices;
 #endif
@@ -438,23 +477,22 @@ for (_iml = 0; _iml < _cntml; ++_iml) {
     _nd = _ml->_nodelist[_iml];
     _v = NODEV(_nd);
   }
- _break = t + .5*dt; _save = t;
  v=_v;
 {
   cai = _ion_cai;
   ica = _ion_ica;
   cai = _ion_cai;
- { {
- for (; t < _break; t += dt) {
-  _deriv1_advance = 1;
+ {  _deriv1_advance = 1;
  derivimplicit_thread(1, _slist1, _dlist1, _p, integrate, _ppvar, _thread, _nt);
 _deriv1_advance = 0;
-  
-}}
- t = _save;
+     if (secondorder) {
+    int _i;
+    for (_i = 0; _i < 1; ++_i) {
+      _p[_slist1[_i]] += dt*_p[_dlist1[_i]];
+    }}
  }  _ion_cai = cai;
  }}
-
+ dt = _dtsav;
 }
 
 static void terminal(){}
@@ -470,4 +508,63 @@ _first = 0;
 
 #if defined(__cplusplus)
 } /* extern "C" */
+#endif
+
+#if NMODL_TEXT
+static const char* nmodl_filename = "caPump1.mod";
+static const char* nmodl_file_text = 
+  "COMMENT\n"
+  "  Calcium accumlation into the full volume of the compartment and a\n"
+  "  linear membrane pump.\n"
+  "ENDCOMMENT\n"
+  "\n"
+  "UNITS {\n"
+  "	(mM) = (milli/liter)\n"
+  "	(mA) = (milliamp)\n"
+  "	F = (faraday) (coulombs)\n"
+  "}\n"
+  "\n"
+  "NEURON {\n"
+  "	SUFFIX caPump1\n"
+  "	USEION ca READ cai, ica WRITE cai, ica\n"
+  "	RANGE cai0, k1\n"
+  "}\n"
+  "\n"
+  "PARAMETER {\n"
+  "	  cai0 = 50e-6 (mM)	: Requires explicit use in INITIAL\n"
+  "		: block for it to take precedence over cai0_ca_ion\n"
+  "		: Do not forget to initialize in hoc if different\n"
+  "		: from this default.\n"
+  "    k1 = 47.3 (/ms)\n"
+  "}\n"
+  "\n"
+  "ASSIGNED {\n"
+  "	  ica   (mA/cm2)\n"
+  "    diam  (micron)\n"
+  "    ipump (mA/cm2)\n"
+  "}\n"
+  "\n"
+  "STATE {\n"
+  "    cai (mM)\n"
+  "}\n"
+  "\n"
+  "INITIAL {\n"
+  "	  cai = cai0\n"
+  "}\n"
+  "\n"
+  "BREAKPOINT {\n"
+  "	  SOLVE integrate METHOD derivimplicit\n"
+  "    : Add the pump current to ica after the SOLVE\n"
+  "    ica = k1*cai/2*diam*F/(1e4)\n"
+  "}\n"
+  "\n"
+  "DERIVATIVE integrate {\n"
+  "    cai' = -2*ica/diam/F*(1e4)\n"
+  "    : We don't write this:\n"
+  "    :   cai' = -2*ica/diam/F*(1e4) - k1*cai\n"
+  "    : because the pump current has been added to ica in the BREAKPOINT\n"
+  "    : block\n"
+  "\n"
+  "}\n"
+  ;
 #endif

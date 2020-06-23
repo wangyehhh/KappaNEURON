@@ -1,5 +1,6 @@
-/* Created by Language version: 6.2.0 */
+/* Created by Language version: 7.7.0 */
 /* VECTORIZED */
+#define NRN_VECTORIZED 1
 #include <stdio.h>
 #include <stdlib.h>
 #include <math.h>
@@ -21,10 +22,17 @@ extern int _method3;
 extern double hoc_Exp(double);
 #endif
  
-#define _threadargscomma_ _p, _ppvar, _thread, _nt,
-#define _threadargs_ _p, _ppvar, _thread, _nt
+#define nrn_init _nrn_init__capulse
+#define _nrn_initial _nrn_initial__capulse
+#define nrn_cur _nrn_cur__capulse
+#define _nrn_current _nrn_current__capulse
+#define nrn_jacob _nrn_jacob__capulse
+#define nrn_state _nrn_state__capulse
+#define _net_receive _net_receive__capulse 
  
+#define _threadargscomma_ _p, _ppvar, _thread, _nt,
 #define _threadargsprotocomma_ double* _p, Datum* _ppvar, Datum* _thread, _NrnThread* _nt,
+#define _threadargs_ _p, _ppvar, _thread, _nt
 #define _threadargsproto_ double* _p, Datum* _ppvar, Datum* _thread, _NrnThread* _nt
  	/*SUPPRESS 761*/
 	/*SUPPRESS 762*/
@@ -80,6 +88,15 @@ extern void hoc_register_limits(int, HocParmLimits*);
 extern void hoc_register_units(int, HocParmUnits*);
 extern void nrn_promote(Prop*, int, int);
 extern Memb_func* memb_func;
+ 
+#define NMODL_TEXT 1
+#if NMODL_TEXT
+static const char* nmodl_file_text;
+static const char* nmodl_filename;
+extern void hoc_reg_nmodl_text(int, const char*);
+extern void hoc_reg_nmodl_filename(int, const char*);
+#endif
+
  extern void _nrn_setdata_reg(int, void(*)(Prop*));
  static void _setdata(Prop* _prop) {
  _extcall_prop = _prop;
@@ -131,7 +148,7 @@ static void nrn_state(_NrnThread*, _Memb_list*, int);
 static void  nrn_jacob(_NrnThread*, _Memb_list*, int);
  /* connect range variables in _p that hoc is supposed to know about */
  static const char *_mechanism[] = {
- "6.2.0",
+ "7.7.0",
 "capulse",
  "gbar_capulse",
  "t0_capulse",
@@ -172,7 +189,7 @@ static void nrn_alloc(Prop* _prop) {
  static void _initlists();
  static void _update_ion_pointer(Datum*);
  extern Symbol* hoc_lookup(const char*);
-extern void _nrn_thread_reg(int, int, void(*f)(Datum*));
+extern void _nrn_thread_reg(int, int, void(*)(Datum*));
 extern void _nrn_thread_table_reg(int, void(*)(double*, Datum*, Datum*, _NrnThread*, int));
 extern void hoc_register_tolerance(int, HocStateTolerance*, Symbol***);
 extern void _cvode_abstol( Symbol**, double*, int);
@@ -186,14 +203,23 @@ extern void _cvode_abstol( Symbol**, double*, int);
  _mechtype = nrn_get_mechtype(_mechanism[1]);
      _nrn_setdata_reg(_mechtype, _setdata);
      _nrn_thread_reg(_mechtype, 2, _update_ion_pointer);
+ #if NMODL_TEXT
+  hoc_reg_nmodl_text(_mechtype, nmodl_file_text);
+  hoc_reg_nmodl_filename(_mechtype, nmodl_filename);
+#endif
   hoc_register_prop_size(_mechtype, 11, 5);
+  hoc_register_dparam_semantics(_mechtype, 0, "ca_ion");
+  hoc_register_dparam_semantics(_mechtype, 1, "ca_ion");
+  hoc_register_dparam_semantics(_mechtype, 2, "ca_ion");
+  hoc_register_dparam_semantics(_mechtype, 3, "ca_ion");
+  hoc_register_dparam_semantics(_mechtype, 4, "ca_ion");
  	hoc_register_var(hoc_scdoub, hoc_vdoub, hoc_intfunc);
- 	ivoc_help("help ?1 capulse C:/study/FinalProject/KappaNEURON/KappaNEURON/tests/capulse.mod\n");
+ 	ivoc_help("help ?1 capulse C:/study/FinalProject/KappaNEURON/KappaNEURON/test/capulse.mod\n");
  hoc_register_limits(_mechtype, _hoc_parm_limits);
  hoc_register_units(_mechtype, _hoc_parm_units);
  }
  static double FARADAY = 96485.3;
- static double R = 8.31342;
+ static double R = 8.3145;
 static int _reset;
 static char *modelname = "Ca injection pulse";
 
@@ -302,7 +328,8 @@ for (_iml = 0; _iml < _cntml; ++_iml) {
   cao = _ion_cao;
   eca = _ion_eca;
  initmodel(_p, _ppvar, _thread, _nt);
- }}
+ }
+}
 
 static double _nrn_current(double* _p, Datum* _ppvar, Datum* _thread, _NrnThread* _nt, double _v){double _current=0.;v=_v;{ {
    g = 0.0 ;
@@ -360,7 +387,9 @@ for (_iml = 0; _iml < _cntml; ++_iml) {
 	NODERHS(_nd) -= _rhs;
   }
  
-}}
+}
+ 
+}
 
 static void nrn_jacob(_NrnThread* _nt, _Memb_list* _ml, int _type) {
 double* _p; Datum* _ppvar; Datum* _thread;
@@ -382,7 +411,9 @@ for (_iml = 0; _iml < _cntml; ++_iml) {
 	NODED(_nd) += _g;
   }
  
-}}
+}
+ 
+}
 
 static void nrn_state(_NrnThread* _nt, _Memb_list* _ml, int _type) {
 
@@ -399,4 +430,80 @@ _first = 0;
 
 #if defined(__cplusplus)
 } /* extern "C" */
+#endif
+
+#if NMODL_TEXT
+static const char* nmodl_filename = "capulse.mod";
+static const char* nmodl_file_text = 
+  "TITLE Ca injection pulse\n"
+  ": Sets Ca conductance to gbar between t0 and t1; conductance is 0 otherwise\n"
+  "\n"
+  "UNITS {\n"
+  "	  (mA) = (milliamp)\n"
+  "	  (mV) = (millivolt)\n"
+  "    (molar) = (1/liter)\n"
+  "    (mM) = (millimolar)\n"
+  "    FARADAY = (faraday) (coulomb)\n"
+  "    R = (k-mole) (joule/degC)\n"
+  "}\n"
+  "\n"
+  "PARAMETER {		:parameters that can be entered when function is called in cell-setup \n"
+  "	  v             (mV)\n"
+  "	  celsius = 34	(degC)\n"
+  "	  gbar = 1   (mho/cm2)         : initialized conductance\n"
+  "	  cai = 5.e-5   (mM)           : initial internal Ca++ concentration\n"
+  "	  cao = 2       (mM)           : initial external Ca++ concentration\n"
+  "    eca = 140     (mV)           : Ca++ reversal potential\n"
+  "    t0 = 1        (ms)           : Start time of pulse\n"
+  "    t1 = 2        (ms)           : End time of pulse\n"
+  "    fghk = 0                     : Whether GHK equation should be used\n"
+  "}\n"
+  "\n"
+  "NEURON {\n"
+  "	  SUFFIX capulse\n"
+  "	  USEION ca READ cai,cao,eca WRITE ica\n"
+  "    RANGE gbar, g, t0, t1, fghk\n"
+  "}\n"
+  "\n"
+  "ASSIGNED {                       : parameters needed to solve DE\n"
+  "	  ica   (mA/cm2)\n"
+  "    g  (mho/cm2)\n"
+  "}\n"
+  "\n"
+  "INITIAL {                        : initialize the following parameter using rates()\n"
+  "	  g = 0\n"
+  "}\n"
+  "\n"
+  "BREAKPOINT {\n"
+  "    g = 0\n"
+  "    if ((t >= t0) && (t <= t1)) {\n"
+  "        g = gbar\n"
+  "    }\n"
+  "    : calcium current induced by this channel\n"
+  "    if (fghk) {\n"
+  "	      ica = g*ghk(v,cai,cao)\n"
+  "    } else {\n"
+  "        ica = g*(v - eca)\n"
+  "    }\n"
+  "}\n"
+  "\n"
+  "FUNCTION ghk(v(mV), ci(mM), co(mM)) (mV) {\n"
+  "    LOCAL nu,f\n"
+  "    f = KTF(celsius)/2\n"
+  "    nu = v/f\n"
+  "    ghk=-f*(1. - (ci/co)*exp(nu))*efun(nu)\n"
+  "}\n"
+  "\n"
+  "FUNCTION KTF(celsius (degC)) (mV) { : temperature-dependent adjustment factor\n"
+  "    KTF = ((25.(mV)/293.15(degC))*(celsius + 273.15(degC)))\n"
+  "}\n"
+  "\n"
+  "FUNCTION efun(z) {\n"
+  "	  if (fabs(z) < 1e-4) {\n"
+  "		    efun = 1 - z/2\n"
+  "	  }else{\n"
+  "		    efun = z/(exp(z) - 1)\n"
+  "	  }\n"
+  "}\n"
+  ;
 #endif

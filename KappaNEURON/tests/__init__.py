@@ -115,7 +115,8 @@ class TestCaAccumulation(unittest.TestCase):
         return(mode)
 
     def injectCalcium(self, ghk=0, mechanism='caPump1'):
-        print(pkgutil.get_loader('KappaNEURON').filename)
+        # print(pkgutil.get_loader('KappaNEURON').filename)
+        print(pkgutil.get_loader('KappaNEURON').get_filename())
         print(os.path.realpath(KappaNEURON.__file__))
         ## Insert calcium pump into mod section
         self.sm.insert(mechanism)
