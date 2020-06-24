@@ -7,6 +7,8 @@ import neuron.rxd.rxd as nrr
 import neuron.rxd.species
 import neuron.rxd.rxdmath
 import neuron.rxd.node
+import neuron.rxd.plugins
+from neuron.rxd.plugins import SolverPlugin
 from neuron.rxd.species import Species
 from neuron.rxd.generalizedReaction import GeneralizedReaction, molecules_per_mM_um3
 from neuron.rxd.multiCompartmentReaction import MultiCompartmentReaction
@@ -160,67 +162,129 @@ def _run_kappa_continuous(states, b, dt):
 
 
 ## Override the NEURON nonvint _fixed_step_solve callback   
-def _kn_fixed_step_solve(raw_dt):
-    nrr.initializer._do_init()
-    global _kappa_schemes
+# def _kn_fixed_step_solve(raw_dt):
+#     nrr.initializer._do_init()
+#     global _kappa_schemes
+#
+#     report("")
+#     report("---------------------------------------------------------------------------")
+#     report("FIXED STEP SOLVE. NEURON time %f" % nrr.h.t)
+#     report("states")
+#
+#     # allow for skipping certain fixed steps
+#     # warning: this risks numerical errors!
+#     fixed_step_factor = nrr.options.fixed_step_factor
+#     nrr._fixed_step_count += 1
+#     if nrr._fixed_step_count % fixed_step_factor: return
+#     dt = fixed_step_factor * raw_dt
+#
+#     # TODO: this probably shouldn't be here
+#     if nrr._diffusion_matrix is None and nrr._euler_matrix is None: nrr._setup_matrices()
+#
+#     states = nrr._node_get_states()[:]
+#     report(states)
+#
+#     report("flux b")
+#     ## DCS: This gets fluxes (from ica, ik etc) and computes changes
+#     ## due to reactions
+#
+#     ## DCS FIXME: This is different from the old rxd.py file - need check what
+#     ## the difference is
+#     b = nrr._rxd_reaction(states) - nrr._diffusion_matrix * states
+#     report(b)
+#
+#     if not nrr.species._has_3d:
+#         states = _run_kappa_continuous(states, b, dt)
+#
+#         # clear the zero-volume "nodes"
+#         states[nrr._zero_volume_indices] = 0
+#
+#         # TODO: refactor so this isn't in section1d... probably belongs in node
+#         nrr._section1d_transfer_to_legacy()
+#     else:
+#         # the actual advance via implicit euler
+#         n = len(states)
+#         # m = _scipy_sparse_eye(n, n) - dt * _euler_matrix
+#         m = scipy.sparse.eye(n, n) - dt * nrr._euler_matrix
+#         # removed diagonal preconditioner since tests showed no improvement in convergence
+#         # result, info = _scipy_sparse_linalg_bicgstab(m, dt * b)
+#         result, info = scipy.sparse.linalg.bicgstab(m, dt * b)
+#         assert(info == 0)
+#         states[:] += result
+#
+#         for sr in nrr._species_get_all_species().values():
+#             s = sr()
+#             if s is not None: s._transfer_to_legacy()
+#
+#     t = nrr.h.t + dt
+#     sys.stdout.write("\rTime = %12.5f/%5.5f [%3.3f%%]" % (t, neuron.h.tstop, t/neuron.h.tstop*100))
+#     if (abs(t - neuron.h.tstop) < 1E-6):
+#         sys.stdout.write("\n")
+#     sys.stdout.flush()
 
-    report("")
-    report("---------------------------------------------------------------------------")
-    report("FIXED STEP SOLVE. NEURON time %f" % nrr.h.t)
-    report("states")
+class plugin_solver_object(SolverPlugin):
+    def advance(self, raw_dt):
+        nrr.initializer._do_init()
+        global _kappa_schemes
 
-    # allow for skipping certain fixed steps
-    # warning: this risks numerical errors!
-    fixed_step_factor = nrr.options.fixed_step_factor
-    nrr._fixed_step_count += 1
-    if nrr._fixed_step_count % fixed_step_factor: return
-    dt = fixed_step_factor * raw_dt
-    
-    # TODO: this probably shouldn't be here
-    if nrr._diffusion_matrix is None and nrr._euler_matrix is None: nrr._setup_matrices()
+        report("")
+        report("---------------------------------------------------------------------------")
+        report("FIXED STEP SOLVE. NEURON time %f" % nrr.h.t)
+        report("states")
 
-    states = nrr._node_get_states()[:]
-    report(states)
+        # allow for skipping certain fixed steps
+        # warning: this risks numerical errors!
+        fixed_step_factor = nrr.options.fixed_step_factor
+        nrr._fixed_step_count += 1
+        if nrr._fixed_step_count % fixed_step_factor: return
+        dt = fixed_step_factor * raw_dt
 
-    report("flux b")
-    ## DCS: This gets fluxes (from ica, ik etc) and computes changes
-    ## due to reactions
+        # TODO: this probably shouldn't be here
+        if nrr._diffusion_matrix is None and nrr._euler_matrix is None: nrr._setup_matrices()
 
-    ## DCS FIXME: This is different from the old rxd.py file - need check what
-    ## the difference is
-    b = nrr._rxd_reaction(states) - nrr._diffusion_matrix * states
-    report(b)
-    
-    if not nrr.species._has_3d:
-        states = _run_kappa_continuous(states, b, dt)
+        states = nrr._node_get_states()[:]
+        report(states)
 
-        # clear the zero-volume "nodes"
-        states[nrr._zero_volume_indices] = 0
+        report("flux b")
+        ## DCS: This gets fluxes (from ica, ik etc) and computes changes
+        ## due to reactions
 
-        # TODO: refactor so this isn't in section1d... probably belongs in node
-        nrr._section1d_transfer_to_legacy()
-    else:
-        # the actual advance via implicit euler
-        n = len(states)
-        # m = _scipy_sparse_eye(n, n) - dt * _euler_matrix
-        m = scipy.sparse.eye(n, n) - dt * nrr._euler_matrix
-        # removed diagonal preconditioner since tests showed no improvement in convergence
-        # result, info = _scipy_sparse_linalg_bicgstab(m, dt * b)
-        result, info = scipy.sparse.linalg.bicgstab(m, dt * b)
-        assert(info == 0)
-        states[:] += result
+        ## DCS FIXME: This is different from the old rxd.py file - need check what
+        ## the difference is
+        b = nrr._rxd_reaction(states) - nrr._diffusion_matrix * states
+        report(b)
 
-        for sr in nrr._species_get_all_species().values():
-            s = sr()
-            if s is not None: s._transfer_to_legacy()
-    
-    t = nrr.h.t + dt
-    sys.stdout.write("\rTime = %12.5f/%5.5f [%3.3f%%]" % (t, neuron.h.tstop, t/neuron.h.tstop*100))
-    if (abs(t - neuron.h.tstop) < 1E-6):
-        sys.stdout.write("\n")
-    sys.stdout.flush()
+        if not nrr.species._has_3d:
+            states = _run_kappa_continuous(states, b, dt)
 
+            # clear the zero-volume "nodes"
+            states[nrr._zero_volume_indices] = 0
 
+            # TODO: refactor so this isn't in section1d... probably belongs in node
+            nrr._section1d_transfer_to_legacy()
+        else:
+            # the actual advance via implicit euler
+            n = len(states)
+            # m = _scipy_sparse_eye(n, n) - dt * _euler_matrix
+            m = scipy.sparse.eye(n, n) - dt * nrr._euler_matrix
+            # removed diagonal preconditioner since tests showed no improvement in convergence
+            # result, info = _scipy_sparse_linalg_bicgstab(m, dt * b)
+            result, info = scipy.sparse.linalg.bicgstab(m, dt * b)
+            assert (info == 0)
+            states[:] += result
+
+            for sr in nrr._species_get_all_species().values():
+                s = sr()
+                if s is not None: s._transfer_to_legacy()
+
+        t = nrr.h.t + dt
+        sys.stdout.write("\rTime = %12.5f/%5.5f [%3.3f%%]" % (t, neuron.h.tstop, t / neuron.h.tstop * 100))
+        if (abs(t - neuron.h.tstop) < 1E-6):
+            sys.stdout.write("\n")
+        sys.stdout.flush()
+
+_kn_fixed_step_solve = plugin_solver_object()
+neuron.rxd.plugins.set_solver(_kn_fixed_step_solve)
 # nrr._callbacks[4] = _kn_fixed_step_solve
 _fih3 = neuron.h.FInitializeHandler(2, _kn_init)
 
