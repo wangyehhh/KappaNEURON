@@ -222,9 +222,13 @@ def _run_kappa_continuous(states, b, dt):
 #         sys.stdout.write("\n")
 #     sys.stdout.flush()
 
-class plugin_solver_object(SolverPlugin):
+class kn_solver_object(SolverPlugin):
+    def supported_sim(self):
+        """Returns True if this simulation is supported; else False"""
+        return True
     def advance(self, raw_dt):
-        nrr.initializer._do_init()
+        # nrr.initializer._do_init()
+        SolverPlugin.transfer_states_from_neuron(self)
         global _kappa_schemes
 
         report("")
@@ -246,6 +250,7 @@ class plugin_solver_object(SolverPlugin):
         report(states)
 
         report("flux b")
+        
         ## DCS: This gets fluxes (from ica, ik etc) and computes changes
         ## due to reactions
 
@@ -282,8 +287,9 @@ class plugin_solver_object(SolverPlugin):
         if (abs(t - neuron.h.tstop) < 1E-6):
             sys.stdout.write("\n")
         sys.stdout.flush()
+        SolverPlugin.transfer_states_to_neuron(self, which=None)
 
-_kn_fixed_step_solve = plugin_solver_object()
+_kn_fixed_step_solve = kn_solver_object()
 neuron.rxd.plugins.set_solver(_kn_fixed_step_solve)
 # nrr._callbacks[4] = _kn_fixed_step_solve
 _fih3 = neuron.h.FInitializeHandler(2, _kn_init)
